@@ -1,2 +1,13 @@
+# IntelliJ #
+*.iml
+*.ipr
+*.iws
+.idea
+out
+
+# Maven Project #
+target
 *.class
-*.log
+
+# MacOS #
+.DS_Store
