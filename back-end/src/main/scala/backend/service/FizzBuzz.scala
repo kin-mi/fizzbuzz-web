@@ -12,28 +12,48 @@ class FizzBuzz extends HttpFunction {
   val gson: Gson = new Gson
 
   override def service(httpRequest: HttpRequest,
-    httpResponse: HttpResponse): Unit = {
-    val paramStart = toScala(httpRequest.getFirstQueryParameter("start"))
+                       httpResponse: HttpResponse): Unit = {
+    val paramStart = toScala(httpRequest.getFirstQueryParameter(ParamStart))
     val paramRange =
-      toScala(httpRequest.getFirstQueryParameter("range")).getOrElse("1")
+      toScala(httpRequest.getFirstQueryParameter(ParamRange)).getOrElse("1")
 
     val isNotAllowMethod = !"GET".equals(httpRequest.getMethod)
-    val isInvalidArgument = paramStart.isEmpty || paramStart.get.toIntOption.isEmpty || paramRange.toIntOption.isEmpty
+    val isInvalidArgument = paramStart.isEmpty
+
+    def isInvalidStartNumber: Boolean = {
+      val num = paramStart.get
+      num.toIntOption.isEmpty ||
+      num.toInt < 1 ||
+      num.toInt > BigInt(
+        Integer.MAX_VALUE - paramRange.toIntOption.getOrElse(1)) + 1
+    }
+
+    def isInvalidRangeNumber: Boolean = {
+      val num = paramRange
+      num.toIntOption.isEmpty || num.toInt < 1 || num.toInt > RangeMax
+    }
+
     if (isNotAllowMethod) {
       httpResponse.setStatusCode(HttpURLConnection.HTTP_BAD_METHOD,
-        ErrMsgNotAllowMethod)
+                                 ErrMsgNotAllowMethod)
     } else if (isInvalidArgument) {
       httpResponse.setStatusCode(HttpURLConnection.HTTP_BAD_REQUEST,
-        ErrMsgInvalidArgument)
+                                 ErrMsgInvalidArgument)
+    } else if (isInvalidStartNumber) {
+      httpResponse.setStatusCode(HttpURLConnection.HTTP_BAD_REQUEST,
+                                 ErrMsgInvalidStartNumber)
+    } else if (isInvalidRangeNumber) {
+      httpResponse.setStatusCode(HttpURLConnection.HTTP_BAD_REQUEST,
+                                 ErrMsgInvalidRangeNumber)
     } else {
-      val startNumber = paramStart.get.toInt
-      val range = paramRange.toInt
-      val data = (startNumber to range)
+      val startNumber = BigInt(paramStart.get.toInt)
+      val range = BigInt(paramRange.toInt)
+      val data = (startNumber until startNumber + range)
+        .map(_.toInt)
         .map(i => {
           FizzBuzzResult(i, fizzbuzz(i))
         })
         .toArray
-
       httpResponse.setStatusCode(HttpURLConnection.HTTP_OK)
       httpResponse.getWriter.write(
         gson.toJson(FizzbuzzResponse(success = true, data = data))
